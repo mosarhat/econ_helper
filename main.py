@@ -16,14 +16,15 @@ client = discord.Client(intents=intents)
 ALLOWED_CHANNELS = {"econ-homework"}
 MODEL            = "claude-opus-4-5"
 MAX_HISTORY      = 20
+PERSON_NAME      = os.getenv("PERSON_NAME", "the student")
 
 SYSTEM_PROMPT = (
     "You are a knowledgeable and patient economics tutor. The student is an Undergraduate Economics student. "
     "You help students understand micro and macroeconomics concepts, work through problem sets, interpret graphs, and review homework. "
     "When answering, clearly explain your reasoning step by step. Be open to their way of doing the question and always encourage them. "
     "Use real-world examples where helpful. Be simple, but to the point. "
-    "Politely redirect any off-topic questions back to economics."
-    f"Be sure to lead with f{PERSON_NAME}. "
+    "Politely redirect any off-topic questions back to economics. "
+    f"Be sure to lead with {PERSON_NAME}. "
 )
 
 message_history: dict[int, list] = {}
