@@ -1,4 +1,6 @@
 import os
+import base64
+import mimetypes
 import discord
 import anthropic
 
@@ -40,19 +42,56 @@ async def on_message(message):
     if channel_id not in message_history:
         message_history[channel_id] = []
 
-    message_history[channel_id].append({"role": "user", "content": message.content})
-    message_history[channel_id] = message_history[channel_id][-MAX_HISTORY:]
+    user_text = (message.content or "").strip()
+
+    image_blocks = []
+    for attachment in message.attachments:
+        content_type = attachment.content_type
+        if not content_type:
+            content_type = mimetypes.guess_type(attachment.filename or "")[0]
+        if not content_type or not content_type.startswith("image/"):
+            continue
+
+        data = await attachment.read()
+        b64 = base64.b64encode(data).decode("utf-8")
+        image_blocks.append(
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": content_type or "image/png",
+                    "data": b64,
+                },
+            }
+        )
+
+    if image_blocks:
+        user_content = image_blocks[:]
+        if user_text:
+            user_content.append({"type": "text", "text": user_text})
+        else:
+            user_content.append({"type": "text", "text": "Describe the image."})
+    else:
+        user_content = user_text
 
     try:
         response = claude.messages.create(
             model=MODEL,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
-            messages=message_history[channel_id],
+            messages=message_history[channel_id] + [{"role": "user", "content": user_content}],
         )
         answer = response.content[0].text
+        if user_text:
+            stored_user = user_text
+        elif image_blocks:
+            stored_user = "[image]"
+        else:
+            stored_user = ""
+
+        message_history[channel_id].append({"role": "user", "content": stored_user})
         message_history[channel_id].append({"role": "assistant", "content": answer})
-        print(message_history)
+        message_history[channel_id] = message_history[channel_id][-MAX_HISTORY:]
         for chunk in [answer[i:i+2000] for i in range(0, len(answer), 2000)]:
             await message.channel.send(chunk)
     except Exception as e:
