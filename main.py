@@ -1,7 +1,8 @@
 import os
 import base64
 import mimetypes
-import imghdr
+from io import BytesIO
+from PIL import Image
 import discord
 import anthropic
 
@@ -18,6 +19,7 @@ ALLOWED_CHANNELS = {"econ-homework"}
 MODEL            = "claude-opus-4-5"
 MAX_HISTORY      = 20
 PERSON_NAME      = os.getenv("PERSON_NAME", "the student")
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 SYSTEM_PROMPT = (
     "You are a knowledgeable and patient economics tutor. The student is an Undergraduate Economics student. "
@@ -32,6 +34,22 @@ SYSTEM_PROMPT = (
 )
 
 message_history: dict[int, list] = {}
+
+def detect_image_mime(data: bytes) -> str | None:
+    try:
+        with Image.open(BytesIO(data)) as img:
+            fmt = (img.format or "").upper()
+    except Exception:
+        return None
+
+    mapping = {
+        "JPEG": "image/jpeg",
+        "JPG": "image/jpeg",
+        "PNG": "image/png",
+        "WEBP": "image/webp",
+        "GIF": "image/gif",
+    }
+    return mapping.get(fmt)
 
 @client.event
 async def on_ready():
@@ -53,16 +71,13 @@ async def on_message(message):
     image_blocks = []
     for attachment in message.attachments:
         data = await attachment.read()
-        detected = imghdr.what(None, h=data)
-        if detected:
-            detected = "jpeg" if detected == "jpg" else detected
-            content_type = f"image/{detected}"
-        else:
+        content_type = detect_image_mime(data)
+        if not content_type:
             content_type = attachment.content_type
-            if not content_type:
-                content_type = mimetypes.guess_type(attachment.filename or "")[0]
+        if not content_type:
+            content_type = mimetypes.guess_type(attachment.filename or "")[0]
 
-        if not content_type or not content_type.startswith("image/"):
+        if content_type not in ALLOWED_IMAGE_TYPES:
             continue
 
         b64 = base64.b64encode(data).decode("utf-8")
