@@ -1,6 +1,7 @@
 import os
 import base64
 import mimetypes
+import imghdr
 import discord
 import anthropic
 
@@ -51,13 +52,19 @@ async def on_message(message):
 
     image_blocks = []
     for attachment in message.attachments:
-        content_type = attachment.content_type
-        if not content_type:
-            content_type = mimetypes.guess_type(attachment.filename or "")[0]
+        data = await attachment.read()
+        detected = imghdr.what(None, h=data)
+        if detected:
+            detected = "jpeg" if detected == "jpg" else detected
+            content_type = f"image/{detected}"
+        else:
+            content_type = attachment.content_type
+            if not content_type:
+                content_type = mimetypes.guess_type(attachment.filename or "")[0]
+
         if not content_type or not content_type.startswith("image/"):
             continue
 
-        data = await attachment.read()
         b64 = base64.b64encode(data).decode("utf-8")
         image_blocks.append(
             {
