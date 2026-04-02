@@ -1,2 +1,5 @@
-# econ_helper
-a bot made to help someone with their econ homework
+# Econonomic Helper
+
+Installation
+Reasoning
+Hosting on Railway
