@@ -23,6 +23,7 @@ SYSTEM_PROMPT = (
     "When answering, clearly explain your reasoning step by step. Be open to their way of doing the question and always encourage them. "
     "Use real-world examples where helpful. Be simple, but to the point. "
     "Politely redirect any off-topic questions back to economics."
+    f"Be sure to lead with f{PERSON_NAME}. "
 )
 
 message_history: dict[int, list] = {}
